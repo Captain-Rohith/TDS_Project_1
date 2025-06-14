@@ -14,16 +14,8 @@ import google.generativeai as genai
 from PIL import Image
 
 # Configure logging for production
-logging.basicConfig(level=logging.WARNING)  # Reduced logging
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
-
-# Initialize FastAPI app with minimal config
-app = FastAPI(
-    title="RAG Assistant", 
-    description="RAG-based Q&A system",
-    docs_url=None,  # Disable docs in production
-    redoc_url=None  # Disable redoc in production
-)
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
@@ -102,7 +94,7 @@ class RAGSystem:
                     'similarity': similarity,
                     'file': str(self.metadata[i]['file']),
                     'chunk_id': int(self.metadata[i]['chunk_id']),
-                    'text': str(self.metadata[i]['text'])[:1000]  # Limit text length
+                    'text': str(self.metadata[i]['text'])[:1000]
                 })
             except Exception as e:
                 continue
@@ -118,11 +110,11 @@ class RAGSystem:
         markdown_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
         matches = re.findall(markdown_pattern, text)
         for text_part, url in matches:
-            links.append({"url": url, "text": text_part[:50]})  # Limit text length
+            links.append({"url": url, "text": text_part[:50]})
         
-        # Pattern to match plain URLs (limited)
+        # Pattern to match plain URLs
         url_pattern = r'https?://[^\s<>"{}|\\^`[\]]+'
-        urls = re.findall(url_pattern, text)[:3]  # Limit URLs
+        urls = re.findall(url_pattern, text)[:3]
         
         for url in urls:
             url_index = text.find(url)
@@ -135,18 +127,18 @@ class RAGSystem:
             
             links.append({"url": url, "text": context})
         
-        return links[:3]  # Limit number of links
+        return links[:3]
     
     def generate_answer(self, query: str, context_chunks: List[Dict[str, Any]], image_data: Optional[str] = None) -> str:
         """Generate answer using Gemini with retrieved context."""
         try:
-            # Prepare context (limit size)
+            # Prepare context
             context = "\n\n".join([
-                f"From {chunk['file']}:\n{chunk['text'][:500]}"  # Limit context size
-                for chunk in context_chunks[:3]  # Limit number of chunks
+                f"From {chunk['file']}:\n{chunk['text'][:500]}"
+                for chunk in context_chunks[:3]
             ])
             
-            # Create concise prompt
+            # Create prompt
             prompt = f"""Answer the student question based on the context.
 
 Context:
@@ -163,14 +155,14 @@ Answer concisely:"""
                     image = Image.open(io.BytesIO(image_bytes))
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content([prompt, image])
-                    return response.text[:1000]  # Limit response length
+                    return response.text[:1000]
                 except Exception as e:
                     logger.error(f"Error processing image: {e}")
             
             # Text-only generation
             model = genai.GenerativeModel('gemini-2.0-flash')
             response = model.generate_content(prompt)
-            return response.text[:1000]  # Limit response length
+            return response.text[:1000]
             
         except Exception as e:
             logger.error(f"Error generating answer: {e}")
@@ -178,6 +170,14 @@ Answer concisely:"""
 
 # Initialize RAG system globally
 rag_system = RAGSystem()
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="RAG Assistant", 
+    description="RAG-based Q&A system",
+    docs_url=None,
+    redoc_url=None
+)
 
 @app.post("/api/", response_model=QueryResponse)
 async def query_rag(request: QueryRequest):
@@ -201,7 +201,7 @@ async def query_rag(request: QueryRequest):
         
         # Extract links from relevant chunks
         all_links = []
-        for chunk in similar_chunks[:2]:  # Limit chunks processed for links
+        for chunk in similar_chunks[:2]:
             chunk_links = rag_system.extract_links_from_text(chunk['text'])
             all_links.extend(chunk_links)
         
@@ -238,8 +238,6 @@ async def root():
         }
     }
 
-# Vercel handler
-def handler(request, context):
-    """Vercel serverless handler."""
-    import uvicorn
-    return uvicorn.run(app, host="0.0.0.0", port=8000)
+# This is the key part for Vercel compatibility
+from mangum import Mangum
+handler = Mangum(app)
