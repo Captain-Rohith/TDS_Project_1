@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import google.generativeai as genai
 from PIL import Image
+from starlette.middleware.cors import CORSMiddleware
 
 # Configure logging for production
 logging.basicConfig(level=logging.WARNING)
@@ -177,6 +178,14 @@ app = FastAPI(
     description="RAG-based Q&A system",
     docs_url=None,
     redoc_url=None
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"], 
+    allow_headers=["X-Custom-Header", "Content-Type"],  
 )
 
 @app.post("/api/", response_model=QueryResponse)
