@@ -41,3 +41,4 @@ documents.json
 full_posts.json
 full_posts_with_descriptions.json
 filtered_topics.json
+node_modules/

@@ -1,3 +1,4 @@
 .env
 markdowns
 .vercel
+node_modules/
